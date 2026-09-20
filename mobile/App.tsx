@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Button,
@@ -9,29 +9,48 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as Crypto from 'expo-crypto';
+
+import { initDatabase, inserirPessoa } from './src/database';
 
 export default function App() {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
+  const [pronto, setPronto] = useState(false);
 
-  function salvar() {
+  useEffect(() => {
+    async function iniciar() {
+      await initDatabase();
+      setPronto(true);
+    }
+
+    void iniciar();
+  }, []);
+
+  async function salvar() {
     if (!nome.trim()) {
       Alert.alert('Atenção', 'Informe o nome.');
       return;
     }
 
-    console.log({
-      nome: nome.trim(),
-      email: email.trim(),
-      telefone: telefone.trim(),
-    });
+    const id = Crypto.randomUUID();
+
+    await inserirPessoa(
+      id,
+      nome.trim(),
+      email.trim(),
+      telefone.trim()
+    );
 
     setNome('');
     setEmail('');
     setTelefone('');
 
-    Alert.alert('Etapa 1', 'Dados capturados. Ainda não existe persistência.');
+    Alert.alert(
+      'Salvo',
+      'Registro gravado no SQLite com status pendente.'
+    );
   }
 
   return (
@@ -40,7 +59,7 @@ export default function App() {
 
       <Text style={styles.title}>Cadastro de Pessoas</Text>
       <Text style={styles.description}>
-        Nesta etapa, o formulário apenas captura os dados.
+        Os dados agora são salvos primeiro no dispositivo.
       </Text>
 
       <View style={styles.form}>
@@ -68,7 +87,11 @@ export default function App() {
           keyboardType="phone-pad"
         />
 
-        <Button title="Salvar" onPress={salvar} />
+        <Button
+          title="Salvar"
+          onPress={salvar}
+          disabled={!pronto}
+        />
       </View>
     </SafeAreaView>
   );
