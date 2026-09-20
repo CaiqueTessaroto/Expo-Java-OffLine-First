@@ -18,6 +18,7 @@ import {
   listarPessoas,
   Pessoa,
 } from './src/database';
+import { sincronizarPendentes } from './src/sync';
 
 export default function App() {
   const [nome, setNome] = useState('');
@@ -25,6 +26,7 @@ export default function App() {
   const [telefone, setTelefone] = useState('');
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [pronto, setPronto] = useState(false);
+  const [sincronizando, setSincronizando] = useState(false);
 
   async function carregarPessoas() {
     const dados = await listarPessoas();
@@ -59,6 +61,28 @@ export default function App() {
     setTelefone('');
 
     await carregarPessoas();
+  }
+
+  async function sincronizar() {
+    if (sincronizando) {
+      return;
+    }
+
+    try {
+      setSincronizando(true);
+
+      const resultado = await sincronizarPendentes();
+      await carregarPessoas();
+
+      Alert.alert(
+        'Sincronização',
+        `Pendentes: ${resultado.total}\n` +
+          `Sincronizados: ${resultado.sincronizados}\n` +
+          `Erros: ${resultado.erros}`
+      );
+    } finally {
+      setSincronizando(false);
+    }
   }
 
   return (
@@ -96,6 +120,12 @@ export default function App() {
           title="Salvar localmente"
           onPress={salvar}
           disabled={!pronto}
+        />
+
+        <Button
+          title={sincronizando ? 'Sincronizando...' : 'Sincronizar'}
+          onPress={sincronizar}
+          disabled={!pronto || sincronizando}
         />
       </View>
 
