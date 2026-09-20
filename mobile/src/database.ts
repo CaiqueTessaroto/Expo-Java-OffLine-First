@@ -52,3 +52,35 @@ export async function inserirPessoa(
     telefone
   );
 }
+
+export async function listarPessoas() {
+  const db = await getDatabase();
+
+  return db.getAllAsync<Pessoa>(
+    `SELECT id, nome, email, telefone, sincronizado
+       FROM pessoas
+      ORDER BY rowid DESC`
+  );
+}
+
+export async function listarPendentes() {
+  const db = await getDatabase();
+
+  return db.getAllAsync<Pessoa>(
+    `SELECT id, nome, email, telefone, sincronizado
+       FROM pessoas
+      WHERE sincronizado = 0
+      ORDER BY rowid`
+  );
+}
+
+export async function marcarComoSincronizada(id: string) {
+  const db = await getDatabase();
+
+  await db.runAsync(
+    `UPDATE pessoas
+        SET sincronizado = 1
+      WHERE id = ?`,
+    id
+  );
+}

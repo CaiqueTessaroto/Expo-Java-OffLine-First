@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Alert,
   Button,
+  FlatList,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -11,17 +12,29 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import * as Crypto from 'expo-crypto';
 
-import { initDatabase, inserirPessoa } from './src/database';
+import {
+  initDatabase,
+  inserirPessoa,
+  listarPessoas,
+  Pessoa,
+} from './src/database';
 
 export default function App() {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
+  const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [pronto, setPronto] = useState(false);
+
+  async function carregarPessoas() {
+    const dados = await listarPessoas();
+    setPessoas(dados);
+  }
 
   useEffect(() => {
     async function iniciar() {
       await initDatabase();
+      await carregarPessoas();
       setPronto(true);
     }
 
@@ -34,10 +47,8 @@ export default function App() {
       return;
     }
 
-    const id = Crypto.randomUUID();
-
     await inserirPessoa(
-      id,
+      Crypto.randomUUID(),
       nome.trim(),
       email.trim(),
       telefone.trim()
@@ -47,20 +58,14 @@ export default function App() {
     setEmail('');
     setTelefone('');
 
-    Alert.alert(
-      'Salvo',
-      'Registro gravado no SQLite com status pendente.'
-    );
+    await carregarPessoas();
   }
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
 
-      <Text style={styles.title}>Cadastro de Pessoas</Text>
-      <Text style={styles.description}>
-        Os dados agora são salvos primeiro no dispositivo.
-      </Text>
+      <Text style={styles.title}>Cadastro Offline First</Text>
 
       <View style={styles.form}>
         <TextInput
@@ -88,11 +93,33 @@ export default function App() {
         />
 
         <Button
-          title="Salvar"
+          title="Salvar localmente"
           onPress={salvar}
           disabled={!pronto}
         />
       </View>
+
+      <Text style={styles.subtitle}>Pessoas cadastradas</Text>
+
+      <FlatList
+        data={pessoas}
+        keyExtractor={(item) => item.id}
+        ListEmptyComponent={
+          <Text style={styles.empty}>Nenhum cadastro local.</Text>
+        }
+        renderItem={({ item }) => (
+          <View style={styles.item}>
+            <Text style={styles.nome}>{item.nome}</Text>
+            <Text>{item.email}</Text>
+            <Text>{item.telefone}</Text>
+            <Text style={styles.status}>
+              {item.sincronizado === 1
+                ? '✓ Sincronizado'
+                : '⟳ Pendente'}
+            </Text>
+          </View>
+        )}
+      />
     </SafeAreaView>
   );
 }
@@ -105,13 +132,15 @@ const styles = StyleSheet.create({
   },
   title: {
     marginTop: 24,
-    marginBottom: 8,
+    marginBottom: 20,
     fontSize: 24,
     fontWeight: '700',
   },
-  description: {
-    marginBottom: 24,
-    color: '#555',
+  subtitle: {
+    marginTop: 24,
+    marginBottom: 12,
+    fontSize: 18,
+    fontWeight: '700',
   },
   form: {
     gap: 12,
@@ -121,5 +150,20 @@ const styles = StyleSheet.create({
     borderColor: '#999',
     borderRadius: 8,
     padding: 12,
+  },
+  item: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  nome: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  status: {
+    marginTop: 4,
+  },
+  empty: {
+    color: '#666',
   },
 });
