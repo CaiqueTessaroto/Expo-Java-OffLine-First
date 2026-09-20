@@ -1,0 +1,19 @@
+# Expo / Node
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+
+# Local environment
+.env
+.env.local
+
+# Java / Maven
+backend/target/
+*.class
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
