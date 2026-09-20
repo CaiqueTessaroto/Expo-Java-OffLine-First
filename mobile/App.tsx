@@ -1,3 +1,5 @@
+import '@expo/metro-runtime';
+
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,

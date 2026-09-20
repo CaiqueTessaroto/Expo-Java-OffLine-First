@@ -1,7 +1,11 @@
+import { Platform } from 'react-native';
+
 import { Pessoa } from './database';
 
 const API_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:8080';
+  Platform.OS === 'web'
+    ? process.env.EXPO_PUBLIC_API_URL_WEB ?? 'http://localhost:8080'
+    : process.env.EXPO_PUBLIC_API_URL_MOBILE ?? 'http://10.0.2.2:8080';
 
 export async function enviarPessoa(pessoa: Pessoa) {
   const response = await fetch(`${API_URL}/pessoas`, {

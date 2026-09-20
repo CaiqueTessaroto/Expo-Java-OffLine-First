@@ -1,11 +1,15 @@
 # Mobile — Expo Offline First
 
+A aplicação da aula deve funcionar em:
+
+- Web;
+- Expo Go em celular físico.
+
 ## Requisitos
 
 - Node.js 22.13 ou superior;
-- Expo Go ou emulador Android/iOS.
-
-> Este laboratório é propositalmente mobile. Web não faz parte do exercício, porque o SQLite no navegador exige configuração adicional.
+- navegador atualizado;
+- Expo Go instalado no celular.
 
 ## Instalar
 
@@ -14,47 +18,45 @@ cd mobile
 npm install
 ```
 
-Confira se as dependências estão alinhadas com o SDK:
+Conferir dependências:
 
 ```bash
 npx expo install --check
 ```
 
-Se o Expo indicar versões incompatíveis:
+Se necessário:
 
 ```bash
 npx expo install --fix
 ```
 
-## Configurar a URL do backend
+## Configurar a API
 
-Copie o exemplo:
+Crie `mobile/.env` a partir de `.env.example`.
 
-```bash
-cp .env.example .env
+### Web
+
+Como o navegador e o Spring estão no computador:
+
+```env
+EXPO_PUBLIC_API_URL_WEB=http://localhost:8080
 ```
 
-No Windows, também é possível criar `.env` manualmente.
+### Expo Go
 
-### Celular físico
-
-Descubra o IP do computador:
+Descubra o IPv4 do computador:
 
 ```powershell
 ipconfig
 ```
 
-Configure, por exemplo:
+Exemplo:
 
 ```env
-EXPO_PUBLIC_API_URL=http://192.168.0.15:8080
+EXPO_PUBLIC_API_URL_MOBILE=http://192.168.0.15:8080
 ```
 
-### Android Emulator
-
-```env
-EXPO_PUBLIC_API_URL=http://10.0.2.2:8080
-```
+O celular e o computador precisam estar acessíveis na mesma rede.
 
 ## Executar
 
@@ -62,21 +64,29 @@ EXPO_PUBLIC_API_URL=http://10.0.2.2:8080
 npx expo start
 ```
 
-Depois abra no Expo Go ou use:
+No terminal do Expo:
+
+- pressione `w` para abrir a Web;
+- leia o QR Code com Expo Go para abrir no celular.
+
+Também é possível iniciar diretamente a Web:
 
 ```bash
-npm run android
+npm run web
 ```
 
-Se houver cache de uma configuração anterior:
+## SQLite na Web
 
-```bash
-npx expo start --clear
-```
+O `expo-sqlite` utiliza WebAssembly no navegador.
+
+Por isso este projeto possui `metro.config.js` com:
+
+- suporte a arquivos `.wasm`;
+- cabeçalhos COEP/COOP necessários ao `SharedArrayBuffer`.
+
+O suporte Web do `expo-sqlite` ainda é classificado pelo Expo como alpha.
 
 ## Banco local
-
-Tabela:
 
 ```text
 pessoas
@@ -93,11 +103,3 @@ Estados:
 0 = pendente
 1 = sincronizado
 ```
-
-## Regra principal
-
-O botão Salvar sempre grava primeiro no SQLite.
-
-A tentativa de envio ao servidor ocorre depois.
-
-Se a API não estiver disponível, o registro continua localmente como pendente.
