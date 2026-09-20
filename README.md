@@ -1,78 +1,197 @@
 # Expo + Java Offline First
 
-Projeto didático para demonstrar, passo a passo, como uma aplicação **Expo / React Native** pode trabalhar no modelo **offline first** e sincronizar um formulário simples com um backend **Java + Spring Boot + H2**.
+Exemplo didático completo de uma aplicação **Expo / React Native** que funciona em modo **offline first** e sincroniza um formulário com um backend **Java + Spring Boot + H2**.
 
-## Objetivo
+## Objetivo da aula
 
-Construir uma aplicação de cadastro de pessoas com:
+Cadastrar:
 
 - nome;
 - e-mail;
-- telefone;
-- persistência local com SQLite;
-- UUID gerado no dispositivo;
-- status de sincronização;
-- API REST em Spring Boot;
-- persistência remota em H2;
-- sincronização manual;
-- sincronização automática quando a conexão retorna.
+- telefone.
 
-## Como estudar este repositório
+O usuário deve conseguir salvar mesmo sem internet ou com o backend indisponível.
 
-O histórico de commits faz parte do tutorial. Cada commit corresponde a uma etapa incremental da aula.
+## Arquitetura
 
-Ao final, a estrutura será:
+```text
+┌──────────────────────────────┐
+│          Expo Mobile         │
+│                              │
+│ Formulário                   │
+│    ↓                         │
+│ SQLite local                 │
+│    ↓                         │
+│ Registros pendentes          │
+│    ↓                         │
+│ Serviço de sincronização     │
+│    ↓                         │
+│ NetInfo                      │
+└──────────────┬───────────────┘
+               │ HTTP / JSON
+               ↓
+┌──────────────────────────────┐
+│        Spring Boot           │
+│                              │
+│ Controller                   │
+│    ↓                         │
+│ Service                      │
+│    ↓                         │
+│ Repository / JPA             │
+│    ↓                         │
+│ H2                           │
+└──────────────────────────────┘
+```
+
+## Regra principal
+
+> Salvar localmente e sincronizar são operações diferentes.
+
+O fluxo normal é:
+
+```text
+SALVAR
+  ↓
+gera UUID
+  ↓
+SQLite
+  ↓
+sincronizado = 0
+  ↓
+tenta sincronizar quando possível
+  ↓
+Spring confirma
+  ↓
+sincronizado = 1
+```
+
+## Estrutura
 
 ```text
 .
-├── mobile/   # Expo / React Native
-├── backend/  # Spring Boot / H2
-└── docs/     # roteiro de testes e material de apoio
+├── mobile/
+│   ├── App.tsx
+│   ├── .env.example
+│   └── src/
+│       ├── api.ts
+│       ├── database.ts
+│       └── sync.ts
+├── backend/
+│   ├── pom.xml
+│   └── src/main/...
+└── docs/
+    ├── ETAPAS.md
+    └── ROTEIRO-TESTES.md
 ```
 
-## Fluxo final
+# Backend
+
+```bash
+cd backend
+mvn spring-boot:run
+```
+
+API:
 
 ```text
-Formulário
-    ↓
-SQLite local
-    ↓
-sincronizado = false
-    ↓
-há conexão?
-  ↙       ↘
-não       sim
- ↓         ↓
-fica      POST /pessoas
-local       ↓
-         Spring Boot
-             ↓
-             H2
-             ↓
-        resposta de sucesso
-             ↓
-       sincronizado = true
+http://localhost:8080
 ```
 
-## Tecnologias
+H2 Console:
 
-### Mobile
+```text
+http://localhost:8080/h2-console
+```
 
-- Expo SDK 57
-- React Native
-- TypeScript
-- expo-sqlite
-- expo-crypto
-- @react-native-community/netinfo
+JDBC URL:
 
-### Backend
+```text
+jdbc:h2:mem:offlinefirst
+```
 
-- Java 21
-- Spring Boot 4.1.1
-- Spring Web
-- Spring Data JPA
-- H2 Database
+# Mobile
 
-## Observação
+```bash
+cd mobile
+npm install
+npm start
+```
 
-Em celular físico, `localhost:8080` aponta para o próprio celular. Para acessar o Spring executando no computador, configure a URL da API com o IP do computador na rede local.
+Crie `mobile/.env`.
+
+### Celular físico
+
+```env
+EXPO_PUBLIC_API_URL=http://IP_DO_COMPUTADOR:8080
+```
+
+Exemplo:
+
+```env
+EXPO_PUBLIC_API_URL=http://192.168.0.15:8080
+```
+
+### Android Emulator
+
+```env
+EXPO_PUBLIC_API_URL=http://10.0.2.2:8080
+```
+
+# API REST
+
+```text
+POST /pessoas
+GET  /pessoas
+```
+
+# Como usar o histórico em aula
+
+Cada commit corresponde a uma etapa do tutorial.
+
+```bash
+git log --oneline
+```
+
+Consulte:
+
+- `docs/ETAPAS.md`
+- `docs/ROTEIRO-TESTES.md`
+
+# Tecnologias
+
+## Mobile
+
+- Expo SDK 57;
+- React 19.2.3;
+- React Native 0.86;
+- TypeScript;
+- expo-sqlite;
+- expo-crypto;
+- NetInfo.
+
+## Backend
+
+- Java 21;
+- Spring Boot 4.1.1;
+- Spring Data JPA;
+- H2.
+
+# Escopo
+
+O exemplo implementa apenas:
+
+```text
+CREATE offline
++
+sincronização cliente → servidor
+```
+
+Evoluções para aulas futuras:
+
+- edição offline;
+- exclusão offline;
+- sincronização bidirecional;
+- conflitos;
+- autenticação;
+- retry/backoff;
+- fila de operações.
