@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Button,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Crypto from 'expo-crypto';
+import NetInfo from '@react-native-community/netinfo';
 
 import {
   initDatabase,
@@ -28,19 +29,79 @@ export default function App() {
   const [pronto, setPronto] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
 
+  const sincronizandoRef = useRef(false);
+
   async function carregarPessoas() {
     const dados = await listarPessoas();
     setPessoas(dados);
   }
 
+  async function sincronizar(mostrarMensagem = false) {
+    if (sincronizandoRef.current) {
+      return;
+    }
+
+    try {
+      sincronizandoRef.current = true;
+      setSincronizando(true);
+
+      const resultado = await sincronizarPendentes();
+      await carregarPessoas();
+
+      if (mostrarMensagem) {
+        Alert.alert(
+          'Sincronização',
+          `Pendentes: ${resultado.total}\n` +
+            `Sincronizados: ${resultado.sincronizados}\n` +
+            `Erros: ${resultado.erros}`
+        );
+      }
+    } finally {
+      sincronizandoRef.current = false;
+      setSincronizando(false);
+    }
+  }
+
   useEffect(() => {
+    let ativo = true;
+    let unsubscribe: (() => void) | undefined;
+
     async function iniciar() {
       await initDatabase();
+
+      if (!ativo) {
+        return;
+      }
+
       await carregarPessoas();
       setPronto(true);
+
+      unsubscribe = NetInfo.addEventListener((state) => {
+        const conectado =
+          state.isConnected === true &&
+          state.isInternetReachable !== false;
+
+        if (conectado) {
+          void sincronizar(false);
+        }
+      });
+
+      const rede = await NetInfo.fetch();
+      const conectado =
+        rede.isConnected === true &&
+        rede.isInternetReachable !== false;
+
+      if (conectado) {
+        void sincronizar(false);
+      }
     }
 
     void iniciar();
+
+    return () => {
+      ativo = false;
+      unsubscribe?.();
+    };
   }, []);
 
   async function salvar() {
@@ -61,27 +122,14 @@ export default function App() {
     setTelefone('');
 
     await carregarPessoas();
-  }
 
-  async function sincronizar() {
-    if (sincronizando) {
-      return;
-    }
+    const rede = await NetInfo.fetch();
+    const conectado =
+      rede.isConnected === true &&
+      rede.isInternetReachable !== false;
 
-    try {
-      setSincronizando(true);
-
-      const resultado = await sincronizarPendentes();
-      await carregarPessoas();
-
-      Alert.alert(
-        'Sincronização',
-        `Pendentes: ${resultado.total}\n` +
-          `Sincronizados: ${resultado.sincronizados}\n` +
-          `Erros: ${resultado.erros}`
-      );
-    } finally {
-      setSincronizando(false);
+    if (conectado) {
+      await sincronizar(false);
     }
   }
 
@@ -90,6 +138,9 @@ export default function App() {
       <StatusBar style="dark" />
 
       <Text style={styles.title}>Cadastro Offline First</Text>
+      <Text style={styles.description}>
+        O cadastro sempre é salvo no SQLite antes da sincronização.
+      </Text>
 
       <View style={styles.form}>
         <TextInput
@@ -116,15 +167,11 @@ export default function App() {
           keyboardType="phone-pad"
         />
 
-        <Button
-          title="Salvar localmente"
-          onPress={salvar}
-          disabled={!pronto}
-        />
+        <Button title="Salvar" onPress={salvar} disabled={!pronto} />
 
         <Button
-          title={sincronizando ? 'Sincronizando...' : 'Sincronizar'}
-          onPress={sincronizar}
+          title={sincronizando ? 'Sincronizando...' : 'Sincronizar agora'}
+          onPress={() => sincronizar(true)}
           disabled={!pronto || sincronizando}
         />
       </View>
@@ -162,9 +209,13 @@ const styles = StyleSheet.create({
   },
   title: {
     marginTop: 24,
-    marginBottom: 20,
+    marginBottom: 6,
     fontSize: 24,
     fontWeight: '700',
+  },
+  description: {
+    marginBottom: 20,
+    color: '#555',
   },
   subtitle: {
     marginTop: 24,
